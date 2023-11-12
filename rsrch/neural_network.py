@@ -8,7 +8,14 @@ Comments will explain how the network works and the implementation.
 
 from random import uniform, randint # uniform generates floats and randint generates integers
 import math
+import numpy as np
 
+
+def sigmoid(x):
+    return 1 / (1 + np.exp(-x))
+
+def sigmoid_derivative(x):
+    return x * (1 - x)
 
 class Node:
     def __init__(self, last_layer_size : int=0): # node constructor
@@ -24,8 +31,6 @@ class Node:
         """
         self.output = 0.0
         self.threshold = uniform(0.0, 1.0)
-        self.z = 0.0
-        self.delta=0
         self.weights = []
 
         for n in range(last_layer_size): # fill up weights 
@@ -45,16 +50,16 @@ class Node:
             return
 
         # otherwise
+        z = 0
         for n,w in zip(last_layer, self.weights): # for each node in the last layer and weight in weights 
-            self.z += n.output * w
-        self.z -= self.threshold
-        self.output = 1/(1 + math.exp(-self.z)) # sigmoid function to activate
+            z += n.output * w
+        z -= self.threshold
+        self.output = sigmoid(z) # sigmoid function to activate
 
     def __str__(self): # debug fuction that prints important info on the node 
         return f"(t: {self.threshold}, w: {self.weights}) "
 
-    def sigmoid_derivative(self, z): # we use this for calculating back propogation
-        return 1 / (1 + math.exp(-z))
+
 
 class Network:
     def __init__(self,inputs, outputs, layer_size, hidden_layers):
@@ -69,9 +74,7 @@ class Network:
         it would look like: https://imgur.com/a/dvGaomv
         """
 
-        self.learning_rate = 0.1 # how fast our NN learns
-
-        # input layer
+        # input layer 
         self.nodes = [[]]
         for i in range(inputs):
             self.nodes[0].append(Node())
@@ -114,76 +117,85 @@ class Network:
 
         return ret
 
-    def find_deltas(self, y : list[float]): # back prop find all weights
-        for l in range(len(self.nodes), 0):
-            if l == len(self.nodes)-1: # last lyr
-                for n in range(len(self.nodes[l]), 0):
-                    self.nodes[l][n].delta = (self.nodes[l][n].output - y[l]) * (self.nodes[l][n].output * (1 - self.nodes[l][n].output)) # last part is transfer derivative, was y - output before
-            else: # we get all deltas of the next layer * each weight
-                # add in delta calculations
-                for n in range(len(self.nodes[l])):
-                    err = 0.0
-                    for next_lyr_node in ((self.nodes[l+1])):
-                        err += next_lyr_node.weights[n] * next_lyr_node.delta
-                    self.nodes[l][n].delta = err * (self.nodes[l][n].output * (1 - self.nodes[l][n].output))
-
-
-    def adjust_weights(self):
-        for l in range(1, len(self.nodes)):
-            for n in range(len(self.nodes[l])):
-                for w in range(len(self.nodes[l][n].weights)):
-                    self.nodes[l][n].weights[w] -= self.nodes[l][n].delta * self.nodes[l][n].z * self.learning_rate # self.nodes[l-1][w].output
-
-
-    def back_prop(self):
+    def back_prop(self, target, learning_rate):
         """
-        WIP
-
         for all training data in a training set, determine the nudges to be made to all weights
-        3d array?            each weight for each node in each layer
+        todo:
+            rewrite this using matrices?
+            more efficient, scalable and maybe better results?
 
-        determine the nudge for a node
-            the output of the node paired with it
-            the derivative of sigmoid of all the resulting z's
-            2*(actual - expected)
+        determine the nudge for a weight of a node, for all nodes
+            find the error of each node:
+                output layer nodes: target - output
+                other layer nodes: delta of the last node * output
+
+            find the delta of each node:
+                error of the node * sigmoid_derivative of the node
+
+            adjust the weights of each node:
+                w  = w + previous node's output * delta of the node * learning rate
 
             start at the end of the network and use back propogation to continue backward and analyze all weights in the network.
         """
-        pass
+        deltas = []
+        for i in range(len(self.nodes)): # fill up delta with blank arrays
+            deltas.append([])
+
+        for l in range(len(self.nodes)-1, 0, -1): # cycles through each layer.
+            errors = []
+
+            # finds the errors
+            if l == 0: # input layer doesnt have weights
+                continue
+            elif l == len(self.nodes)-1:
+                for n in range(len(self.nodes[l])):
+                    errors.append(target[n] - self.nodes[l][n].output)
+            else:
+                for n in range(len(self.nodes[l])):
+                    errors.append(deltas[l+1][n] * self.nodes[l+1][n].output) # error? if l+1 is smaller TODO: fix for larger hidden layers than output layer
+
+            for n in range(len(self.nodes[l])): # deltas
+                deltas[l].append(errors[n] * sigmoid_derivative(self.nodes[l][n].output))
+
+            for n in range(len(self.nodes[l])):
+                for w in range(len(self.nodes[l][n].weights)):
+                    self.nodes[l][n].weights[w] += self.nodes[l-1][n].output * deltas[l][n] * learning_rate
 
 
 
 if __name__ == '__main__':
 
+    # learning rate
+    learning_rate = 0.1
+
     # creates the network 
     net = Network(3,3,3,1)
     print(net)
+    target = [0,1,0]
 
     # processes our inputs 
     inputs = [3,3,3]
-    y = [0,1,0]
-    out = net.process(inputs)
-
-
-    # prints our inputs and outputs 
     print("inputs: ", inputs)
+    print("target: ", target)
+
+    out = net.process(inputs)
     pstring = "[ "
     for n in out:
-        pstring+= str(n.output)+", "
-    pstring +=" ]"
-    print(pstring)
-    print("expected", y)
+        pstring += str(n.output) + ", "
+    pstring += " ]"
+    print("\ninitial run")
+    print(pstring + "\n")
 
-    # back prop
+    for i in range(100000):
 
-    for i in range(10):
-        net.find_deltas(y)
-        net.adjust_weights()
-        out = net.process(inputs)
-
+        # prints our inputs and outputs
         pstring = "[ "
         for n in out:
             pstring += str(n.output) + ", "
-        pstring += "]"
-        print(pstring)
+        pstring += " ]"
+        net.back_prop(target, learning_rate)
+        #print(net)
+        out = net.process(inputs)
 
+    print(f"after {i} training sessions:")
+    print(pstring + "\n")
