@@ -4,7 +4,7 @@ I used it as a reference only. you can tell because this example uses more conve
 I am keeping it here for now for future reference.
 """
 
-numpy as np
+import numpy as np
 
 # Sigmoid activation function
 def sigmoid(x):

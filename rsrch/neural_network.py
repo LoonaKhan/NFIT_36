@@ -5,10 +5,11 @@ Python Object Oriented Programming (POOP) is used here. its easy to follow if yo
 
 Comments will explain how the network works and the implementation.
 """
-
+import json
 from random import uniform, randint # uniform generates floats and randint generates integers
 import math
 import numpy as np
+from time import time
 
 
 def sigmoid(x):
@@ -32,9 +33,11 @@ class Node:
         self.output = 0.0
         self.threshold = uniform(0.0, 1.0)
         self.weights = []
+        self.weight_nudges = []
 
         for n in range(last_layer_size): # fill up weights 
             self.weights.append(uniform(-1.0, 1.0))
+            self.weight_nudges.append([])
 
     def activate(self, last_layer=None, input :float=None):
         """
@@ -58,6 +61,18 @@ class Node:
 
     def __str__(self): # debug fuction that prints important info on the node 
         return f"(t: {self.threshold}, w: {self.weights}) "
+
+    def adjust_weights(self):
+        for w in range(len(self.weights)):
+            avg = 0
+            for i in range(len(self.weight_nudges[w])):
+                avg += self.weight_nudges[w][i]
+            avg /= i
+            self.weights[w] += avg
+
+    def clear_weight_nudges(self): # clears weight nudges. meant for when we retrain over a dataset
+        for w in self.weights:
+            self.weight_nudges.append([])
 
 
 
@@ -90,6 +105,7 @@ class Network:
         for i in range(outputs):
             self.nodes[hidden_layers+1].append(Node(len(self.nodes[hidden_layers])))
 
+        self.learning_rate = 0.1
 
     def process(self, inputs: list[float]):
         """
@@ -117,7 +133,7 @@ class Network:
 
         return ret
 
-    def back_prop(self, target, learning_rate):
+    def back_prop(self, target):
         """
         for all training data in a training set, determine the nudges to be made to all weights
         todo:
@@ -157,45 +173,93 @@ class Network:
             for n in range(len(self.nodes[l])): # deltas
                 deltas[l].append(errors[n] * sigmoid_derivative(self.nodes[l][n].output))
 
-            for n in range(len(self.nodes[l])):
+            for n in range(len(self.nodes[l])): # weight adjustments. todo: add to weight_nudges here
                 for w in range(len(self.nodes[l][n].weights)):
-                    self.nodes[l][n].weights[w] += self.nodes[l-1][n].output * deltas[l][n] * learning_rate
+                    self.nodes[l][n].weight_nudges[w].append( self.nodes[l-1][n].output * deltas[l][n] * self.learning_rate)
+
+    def learn_dataset(self, dataset, debug=False):
+        """
+        Still need a dataset and its format to implement this
+
+        Iterates over a dataset and feeds forward and back propogates for each data sample.
+        from each data sample, it stores the weights nudges in a seperate matrix.
+        after going over the entire dataset, we change the NN's weights by averaging the weights of each data sample nudge.
+        """
+
+        # clears out the weight nudges of each node in the network
+        for l in range(len(self.nodes)):
+            for n in range(len(self.nodes[l])):
+                self.nodes[l][n].clear_weight_nudges()
+
+        # feed forward and back propogate for each sample in the dataset
+        for sample, answer in dataset:
+            if debug is True: print(sample)
+            if debug: print(answer)
+
+            out = self.process(sample)
+            pstring = "[ "
+            for n in out:
+                pstring += str(n.output) + ", "
+            pstring += " ]"
+            if debug: print(pstring+"\n")
+
+            self.back_prop(answer)
+
+        # adjust the node weights
+        for l in range(len(self.nodes)):
+            for n in range(len(self.nodes[l])):
+                self.nodes[l][n].adjust_weights()
+
 
 
 
 if __name__ == '__main__':
 
     # learning rate
-    learning_rate = 0.1
 
     # creates the network 
     net = Network(3,3,3,1)
-    print(net)
-    target = [0,1,0]
+    # print(net)
 
-    # processes our inputs 
-    inputs = [3,3,3]
-    print("inputs: ", inputs)
-    print("target: ", target)
+    with open("test_dataset.json", "r") as f:
+        dataset = json.load(f)
 
-    out = net.process(inputs)
-    pstring = "[ "
-    for n in out:
-        pstring += str(n.output) + ", "
-    pstring += " ]"
-    print("\ninitial run")
-    print(pstring + "\n")
+    start = time()
+    net.learn_dataset(dataset, True)
+    num_runs = 100_000
+    for i in range(num_runs):
+        net.learn_dataset(dataset)
+        #print(f"{round(i/num_runs*100, 2)}% complete training")
 
-    for i in range(100000):
+    net.learn_dataset(dataset, True)
 
-        # prints our inputs and outputs
-        pstring = "[ "
-        for n in out:
-            pstring += str(n.output) + ", "
-        pstring += " ]"
-        net.back_prop(target, learning_rate)
-        #print(net)
-        out = net.process(inputs)
-
-    print(f"after {i} training sessions:")
-    print(pstring + "\n")
+    print(f"Completed in {time() - start} seconds")
+    #
+    # target = [0,1,0]
+    #
+    # # processes our inputs
+    # inputs = [3,3,3]
+    # print("inputs: ", inputs)
+    # print("target: ", target)
+    #
+    # out = net.process(inputs)
+    # pstring = "[ "
+    # for n in out:
+    #     pstring += str(n.output) + ", "
+    # pstring += " ]"
+    # print("\ninitial run")
+    # print(pstring + "\n")
+    #
+    # for i in range(3):
+    #
+    #     # prints our inputs and outputs
+    #     pstring = "[ "
+    #     for n in out:
+    #         pstring += str(n.output) + ", "
+    #     pstring += " ]"
+    #     net.back_prop(target)
+    #     #print(net)
+    #     out = net.process(inputs)
+    #
+    # print(f"after {i} training sessions:")
+    # print(pstring + "\n")
