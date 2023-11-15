@@ -214,10 +214,10 @@ class NeuralNetwork:
         self.learning_rate = learning_rate
 
         self.weights = []
-        self.weights.append(np.random.rand(input_size, hidden_size))
+        self.weights.append(np.random.rand(input_size, hidden_size)*2 - 1)
         for i in range(hidden_layers):
-            self.weights.append(np.random.rand(hidden_size, hidden_size))
-        self.weights.append(np.random.rand(hidden_size, output_size))
+            self.weights.append(np.random.rand(hidden_size, hidden_size)*2 - 1)
+        self.weights.append(np.random.rand(hidden_size, output_size)*2 - 1)
         #self.weights = np.array(self.weights)
 
         self.weight_adjustments = []
@@ -299,14 +299,35 @@ def gen_dataset(num_samples):
 
     return dataset
 
+def save_dataset(dataset):
+    data = []
+    for s in range(len(dataset)):
+        sample = [[],[]]
+        sample[0] = dataset[s][0].tolist()
+        #data[s][0] = data[s][0].tolist()
+        sample[1] = dataset[s][1]
+        data.append(sample)
+    with open("test_dataset.json", "w") as f:
+        json.dump(data, f)
+
+def load_dataset():
+    with open("test_dataset.json", "r") as f:
+        data =  json.load(f)
+
+    for s in range(len(data)):
+        data[s][0] = np.array(data[s][0])
+
+    return data
+
 
 if __name__ == '__main__':
 
 
 
     n = NeuralNetwork(728,2,16,10, 0.1)
+    nn = Network(728, 10, 10,2)
 
-    n.load()
+    #n.load()
     dataset = gen_dataset(100)
 
     # start = time()
@@ -321,4 +342,3 @@ if __name__ == '__main__':
             p += f"{round(out[0][j] - dataset[i][1][j], 4)}, "
         p += " ]"
         print(p)
-    n.save()

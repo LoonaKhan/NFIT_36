@@ -9,7 +9,8 @@ if __name__ == '__main__':
                       output_size=10,
                       learning_rate=0.1
                       )
-    dataset = gen_dataset(100)
+    n.load()
+    dataset = load_dataset()
 
     # try initial run
     print("initial run")
@@ -18,7 +19,7 @@ if __name__ == '__main__':
     print(out,"\n")
 
     start = time()
-    for i in range(10000):
+    for i in range(1000):
         n.train(dataset=dataset)
     print(f"trained in {time() - start} seconds\n")
 
@@ -26,4 +27,4 @@ if __name__ == '__main__':
     out = n.feed_forward(dataset[0][0])
     print(dataset[0][1])
     print(out)
-    #n.save()
+    n.save()
