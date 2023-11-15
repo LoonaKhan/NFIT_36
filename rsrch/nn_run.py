@@ -2,16 +2,13 @@ from neural_network import *
 
 if __name__ == '__main__':
     # creates nn and dataset
-    n = NeuralNetwork(728,2,16,10,0.1)
-    #n.load()
-    dataset = gen_dataset(100)
+    n = NeuralNetwork(728,2,100,10,0.1)
+    n.load()
+    dataset = load_dataset()
+    dataset[0] = [dataset[0][0]]
+    dataset[1] = [dataset[1][0]]
 
-    for i in range(len(dataset)):
-        out = n.feed_forward(dataset[i][0])
-        p = f"{dataset[i][1]} [ "
-        for j in range(len(out[0])):
-            p += f"{out[0][j]}, "
-        p += " ]"
-        print(p)
-
-    print("weights:\n", n.weights)
+    out = n.feed_forward(dataset[0][0])
+    a = dataset[1][0]
+    print("expected: ", a)
+    print("output: ", out)

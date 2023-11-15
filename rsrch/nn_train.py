@@ -9,22 +9,25 @@ if __name__ == '__main__':
                       output_size=10,
                       learning_rate=0.1
                       )
-    n.load()
+    #n.load()
     dataset = load_dataset()
+    dataset[0] = [dataset[0][0]]
+    dataset[1] = [dataset[1][0]]
 
     # try initial run
-    print("initial run")
-    out = n.feed_forward(dataset[0][0])
-    print(dataset[0][1])
-    print(out,"\n")
+    out = n.feed_forward(dataset[0])
 
     start = time()
-    for i in range(1000):
+    for i in range(10000):
         n.train(dataset=dataset)
+        # out = n.feed_forward(dataset[0])
+        # n.back_propogation(dataset[0], dataset[1])
     print(f"trained in {time() - start} seconds\n")
 
     print("after training")
-    out = n.feed_forward(dataset[0][0])
-    print(dataset[0][1])
-    print(out)
+    out = n.feed_forward(dataset[0])
+    for y, a in zip(out, dataset[1]):
+        print(y)
+        print(a)
+        print("\n")
     n.save()

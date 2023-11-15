@@ -261,7 +261,7 @@ class NeuralNetwork:
         for i in range(len(self.weights)):
             self.weight_adjustments.append(np.zeros([len(self.weights[i]), len(self.weights[i][0])]))
 
-        for sample, ans in dataset:
+        for sample, ans in zip(dataset[0], dataset[1]):
             self.feed_forward(sample)
             self.back_propogation(sample, ans)
 
@@ -282,31 +282,28 @@ class NeuralNetwork:
             self.weights[l] = np.array(self.weights[l])
 
 
-def gen_dataset(num_samples):
-    dataset = []
+def gen_dataset(num_samples, inputs, outputs):
+    dataset = [[],[]]
     for i in range(num_samples):
-        sample = []
-        sample.append(np.random.random([728,1]).T)
-        sample.append([])
+        dataset[0].append(np.random.random([inputs,1]).T)
+
+        ans = []
         added_one = False
-        for j in range(10):
-            if not added_one and (randint(0,10) == 5 or j ==9):
-                sample[1].append(1.0)
+        for j in range(outputs):
+            if not added_one and (randint(0,outputs) == 0 or j ==outputs-1):
+                ans.append(1.0)
                 added_one = True
             else:
-                sample[1].append(0.0)
-        dataset.append(sample)
+                ans.append(0.0)
+        dataset[1].append(ans)
 
     return dataset
 
 def save_dataset(dataset):
-    data = []
-    for s in range(len(dataset)):
-        sample = [[],[]]
-        sample[0] = dataset[s][0].tolist()
-        #data[s][0] = data[s][0].tolist()
-        sample[1] = dataset[s][1]
-        data.append(sample)
+    data = [[],[]]
+    for s in range(len(dataset[0])):
+        data[0].append(dataset[0][s].tolist())
+        data[1].append(dataset[1][s])
     with open("test_dataset.json", "w") as f:
         json.dump(data, f)
 
@@ -314,8 +311,8 @@ def load_dataset():
     with open("test_dataset.json", "r") as f:
         data =  json.load(f)
 
-    for s in range(len(data)):
-        data[s][0] = np.array(data[s][0])
+    for s in range(len(data[0])):
+        data[0][s] = np.array(data[0][s])
 
     return data
 
