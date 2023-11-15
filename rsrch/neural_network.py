@@ -74,8 +74,6 @@ class Node:
         for w in self.weights:
             self.weight_nudges.append([])
 
-
-
 class Network:
     def __init__(self,inputs, outputs, layer_size, hidden_layers):
         """
@@ -107,7 +105,7 @@ class Network:
 
         self.learning_rate = 0.1
 
-    def process(self, inputs: list[float]):
+    def feed_forward(self, inputs: list[float]):
         """
         gives the network a set of inputs, which the network computes and returns an output, the outputs of the last layer.
 
@@ -196,7 +194,7 @@ class Network:
             if debug is True: print(sample)
             if debug: print(answer)
 
-            out = self.process(sample)
+            out = self.feed_forward(sample)
             pstring = "[ "
             for n in out:
                 pstring += str(n.output) + ", "
@@ -211,55 +209,116 @@ class Network:
                 self.nodes[l][n].adjust_weights()
 
 
+class NeuralNetwork:
+    def __init__(self, input_size, hidden_layers, hidden_size, output_size, learning_rate):
+        self.learning_rate = learning_rate
+
+        self.weights = []
+        self.weights.append(np.random.rand(input_size, hidden_size))
+        for i in range(hidden_layers):
+            self.weights.append(np.random.rand(hidden_size, hidden_size))
+        self.weights.append(np.random.rand(hidden_size, output_size))
+        #self.weights = np.array(self.weights)
+
+        self.weight_adjustments = []
+        for i in range(len(self.weights)):
+            self.weight_adjustments.append(np.zeros([len(self.weights[i]),len(self.weights[i][0])]))
+
+
+    def feed_forward(self, inputs):
+        self.outputs=[]
+        for i in range(len(self.weights)):
+            if i ==0:
+                output = sigmoid(np.dot(inputs, self.weights[0]))
+            else:
+                output = sigmoid(np.dot(self.outputs[i-1], self.weights[i]))
+
+            self.outputs.append(output)
+
+        return output
+
+    def back_propogation(self, inputs, target):
+        self.deltas = []
+        for i in range(len(self.outputs)):
+            self.deltas.append([])
+
+        for i in range(len(self.outputs)-1, -1, -1):
+            if i == len(self.outputs)-1:
+                err = target - self.outputs[i]
+            else:
+                err = np.dot(self.deltas[i+1], self.weights[i+1].T)
+            self.deltas[i] = (err * sigmoid_derivative(self.outputs[i]))
+
+        for l in range(len(self.weights)-1, -1, -1):
+            if l == 0:
+                self.weight_adjustments[l] += inputs.T.dot(self.deltas[l]) * self.learning_rate
+            else:
+                self.weight_adjustments[l] += self.outputs[l-1].T.dot(self.deltas[l]) * self.learning_rate
+
+    def train(self, dataset):
+        # clear weight adjustments.
+        self.weight_adjustments = []
+        for i in range(len(self.weights)):
+            self.weight_adjustments.append(np.zeros([len(self.weights[i]), len(self.weights[i][0])]))
+
+        for sample, ans in dataset:
+            self.feed_forward(sample)
+            self.back_propogation(sample, ans)
+
+        for w in range(len(self.weights)):
+            self.weights[w] += self.weight_adjustments[w] / len(dataset)
+
+    def save(self):
+        weights_copy = self.weights
+        for l in range(len(weights_copy)):
+            weights_copy[l] = weights_copy[l].tolist()
+        with open("saved_nn.json", "w") as f:
+            json.dump(weights_copy, f)
+
+    def load(self):
+        with open("saved_nn.json", "r") as f:
+            self.weights = json.load(f)
+        for l in range(len(self.weights)):
+            self.weights[l] = np.array(self.weights[l])
+
+
+def gen_dataset(num_samples):
+    dataset = []
+    for i in range(num_samples):
+        sample = []
+        sample.append(np.random.random([728,1]).T)
+        sample.append([])
+        added_one = False
+        for j in range(10):
+            if not added_one and (randint(0,10) == 5 or j ==9):
+                sample[1].append(1.0)
+                added_one = True
+            else:
+                sample[1].append(0.0)
+        dataset.append(sample)
+
+    return dataset
 
 
 if __name__ == '__main__':
 
-    # learning rate
 
-    # creates the network 
-    net = Network(3,3,3,1)
-    # print(net)
 
-    with open("test_dataset.json", "r") as f:
-        dataset = json.load(f)
+    n = NeuralNetwork(728,2,16,10, 0.1)
 
-    start = time()
-    net.learn_dataset(dataset, True)
-    num_runs = 100_000
-    for i in range(num_runs):
-        net.learn_dataset(dataset)
-        #print(f"{round(i/num_runs*100, 2)}% complete training")
+    n.load()
+    dataset = gen_dataset(100)
 
-    net.learn_dataset(dataset, True)
+    # start = time()
+    # for i in range(100):
+    #     n.train(dataset=dataset)
+    # print(f"trained in {time() - start} seconds")
 
-    print(f"Completed in {time() - start} seconds")
-    #
-    # target = [0,1,0]
-    #
-    # # processes our inputs
-    # inputs = [3,3,3]
-    # print("inputs: ", inputs)
-    # print("target: ", target)
-    #
-    # out = net.process(inputs)
-    # pstring = "[ "
-    # for n in out:
-    #     pstring += str(n.output) + ", "
-    # pstring += " ]"
-    # print("\ninitial run")
-    # print(pstring + "\n")
-    #
-    # for i in range(3):
-    #
-    #     # prints our inputs and outputs
-    #     pstring = "[ "
-    #     for n in out:
-    #         pstring += str(n.output) + ", "
-    #     pstring += " ]"
-    #     net.back_prop(target)
-    #     #print(net)
-    #     out = net.process(inputs)
-    #
-    # print(f"after {i} training sessions:")
-    # print(pstring + "\n")
+    for i in range(len(dataset)):
+        out = n.feed_forward(dataset[i][0])
+        p = f"{dataset[i][1]} [ "
+        for j in range(len(out[0])):
+            p += f"{round(out[0][j] - dataset[i][1][j], 4)}, "
+        p += " ]"
+        print(p)
+    n.save()

@@ -33,6 +33,7 @@ class NeuralNetwork:
         output_error = target - self.output
         # Calculate output delta
         output_delta = output_error * sigmoid_derivative(self.output)
+        print(output_delta)
         
         # Calculate hidden layer error
         hidden_error = output_delta.dot(self.weights_hidden_output.T)
@@ -61,7 +62,7 @@ training_inputs = np.array([[0, 1, 0],
 training_outputs = np.array([[0, 1, 1, 0]]).T
 
 # Train the neural network
-for i in range(10000):
+for i in range(1):
     nn.feedforward(training_inputs)
     nn.backpropagation(training_inputs, training_outputs, 0.1)
 
